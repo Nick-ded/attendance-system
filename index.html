@@ -265,15 +265,15 @@ document.getElementById('btnLogoutAdmin').addEventListener('click', () => { logo
 document.getElementById('btnLogoutStudent').addEventListener('click', () => { logout(); });
 document.getElementById('btnGuestBack').addEventListener('click', () => { hideAll(); loginCard.classList.remove('d-none'); });
 
-/* Helper action from summary: markPresentWithSessions & remove student */
+/* Helper: mark present for N sessions and remove student */
 function markPresentWithSessions(name){
+  if(!attendance[name]){ alert('Student not found'); return; }
   const input = prompt(`How many class sessions should be recorded as attended by "${name}"? Enter positive integer:`, '1');
   if(input === null) return; const n = parseInt(input.trim(), 10);
   if(isNaN(n) || n <= 0){ alert('Enter positive integer'); return; }
   totalClasses += n;
   attendance[name].present_count = (attendance[name].present_count || 0) + n;
   attendance[name].last_status = 'Present';
-  // set others last_status absent for these sessions
   Object.keys(attendance).forEach(o => { if(o !== name) attendance[o].last_status = 'Absent'; });
   saveState(); renderAll();
 }
@@ -281,6 +281,25 @@ function removeStudentAdmin(name){
   if(!confirm(`Remove ${name}?`)) return;
   delete attendance[name]; saveState(); renderAll();
 }
+
+/* Event delegation for dynamic buttons */
+document.addEventListener('click', function(e){
+  const target = e.target;
+
+  // Remove student from admin list / summary
+  if(target.matches('.btn-remove-student')){
+    const name = target.getAttribute('data-name');
+    removeStudentAdmin(name);
+    return;
+  }
+
+  // Mark present with sessions
+  if(target.matches('.btn-mark-present-n')){
+    const name = target.getAttribute('data-name');
+    markPresentWithSessions(name);
+    return;
+  }
+});
 
 /* Rendering functions */
 function renderAttendanceForm(){
@@ -309,7 +328,7 @@ function renderAdminStudentList(){
     li.className = 'list-group-item d-flex justify-content-between align-items-center';
     li.innerHTML = `<div>${escapeHtml(name)}</div>
       <div class="btn-group btn-group-sm">
-        <button class="btn btn-outline-danger" onclick="removeStudentAdmin('${name.replace(/'/g,\"\\\\'\")}')">Remove</button>
+        <button class="btn btn-outline-danger btn-remove-student" data-name="${escapeHtml(name)}">Remove</button>
       </div>`;
     ul.appendChild(li);
   });
@@ -334,8 +353,8 @@ function renderSummary(){
       <td>${pct}%</td>
       <td>
         <div class="btn-group btn-group-sm" role="group">
-          <button class="btn btn-outline-secondary" onclick="markPresentWithSessions('${name.replace(/'/g,\"\\\\'\")}')">Mark Present (N)</button>
-          <button class="btn btn-outline-danger" onclick="removeStudentAdmin('${name.replace(/'/g,\"\\\\'\")}')">Remove</button>
+          <button class="btn btn-outline-secondary btn-mark-present-n" data-name="${escapeHtml(name)}">Mark Present (N)</button>
+          <button class="btn btn-outline-danger btn-remove-student" data-name="${escapeHtml(name)}">Remove</button>
         </div>
       </td>
     `;
@@ -394,9 +413,6 @@ document.getElementById('btnLogoutStudent').addEventListener('click', logout);
 document.getElementById('loginPass').addEventListener('keydown', (e) => { if(e.key === 'Enter') document.getElementById('btnLogin').click(); });
 document.getElementById('loginUser').addEventListener('keydown', (e) => { if(e.key === 'Enter') document.getElementById('btnLogin').click(); });
 
-/* Expose a couple helper functions to global for inline onclick use */
-window.markPresentWithSessions = markPresentWithSessions;
-window.removeStudentAdmin = removeStudentAdmin;
 </script>
 </body>
 </html>
