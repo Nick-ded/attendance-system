@@ -3,144 +3,291 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Attendance with Percentage</title>
+<title>Attendance System — Admin / Student Login</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
   body { background:#f7f7fb; }
   .card { border-radius:10px; }
   .small-muted { font-size:0.9rem; color:#6c757d; }
+  .pointer { cursor: pointer; }
 </style>
 </head>
 <body>
 <div class="container py-4">
-  <h1 class="mb-4">Attendance Management (Percentages)</h1>
+  <h1 class="mb-4 text-center">Attendance Management — Web Demo</h1>
 
-  <div class="card mb-3 shadow-sm">
+  <!-- Login Card -->
+  <div id="loginCard" class="card mb-4 shadow-sm">
     <div class="card-body">
-      <div class="row g-2">
-        <div class="col-md-8">
-          <input id="studentName" class="form-control" placeholder="Enter student name">
+      <h5 class="mb-3">Login</h5>
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4">
+          <input id="loginUser" class="form-control" placeholder="Username (admin or student name)">
+        </div>
+        <div class="col-md-4">
+          <input id="loginPass" type="password" class="form-control" placeholder="Password">
         </div>
         <div class="col-md-4 d-grid">
-          <button id="addBtn" class="btn btn-primary">Add Student</button>
+          <button id="btnLogin" class="btn btn-primary">Login</button>
+          <button id="btnGuest" class="btn btn-outline-secondary mt-2">Continue as Guest (View Only)</button>
         </div>
       </div>
-      <div class="small-muted mt-2">Students are stored in your browser. Data persists across refresh.</div>
+      <div class="small-muted mt-2">Admin: <strong>admin</strong> / <strong>admin123</strong>. Student default password: <strong>1234</strong> (can set per student).</div>
     </div>
   </div>
 
-  <div class="card mb-3 shadow-sm">
-    <div class="card-body">
-      <h5 class="mb-3">Student List</h5>
-      <ul id="studentList" class="list-group"></ul>
-    </div>
-  </div>
-
-  <div class="card mb-3 shadow-sm">
-    <div class="card-body">
-      <h5 class="mb-3">Mark Attendance (this action counts as one class/session)</h5>
-      <div id="attendanceForm" class="mb-3"></div>
-      <div class="d-flex gap-2">
-        <button id="saveAttendance" class="btn btn-success">Save Attendance (Increment class count)</button>
-        <button id="markAllPresent" class="btn btn-outline-success">Mark All Present (UI)</button>
-        <button id="markAllAbsent" class="btn btn-outline-secondary">Mark All Absent (UI)</button>
-      </div>
-      <div class="small-muted mt-2">When you click Save Attendance, total class sessions increases by 1 and present counts update.</div>
-    </div>
-  </div>
-
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <h5 class="mb-3">Attendance Summary</h5>
-      <div class="mb-2"><strong>Total class sessions marked:</strong> <span id="totalClasses">0</span></div>
-      <table class="table table-sm">
-        <thead>
-          <tr><th>#</th><th>Name</th><th>Last status</th><th>Present / Total</th><th>Percentage</th><th></th></tr>
-        </thead>
-        <tbody id="summaryBody"></tbody>
-      </table>
-      <div class="d-flex gap-2">
-        <button id="clearAll" class="btn btn-danger btn-sm">Clear All Data</button>
-        <button id="exportJson" class="btn btn-outline-primary btn-sm">Export JSON</button>
-        <a id="downloadLink" style="display:none"></a>
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" class="d-none">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>Admin Dashboard</h3>
+      <div>
+        <button id="btnLogoutAdmin" class="btn btn-sm btn-outline-secondary">Logout</button>
       </div>
     </div>
+
+    <div class="row">
+      <div class="col-lg-4">
+        <div class="card mb-3 shadow-sm">
+          <div class="card-body">
+            <h6>Add Student</h6>
+            <input id="adminNewName" class="form-control mb-2" placeholder="Student name">
+            <input id="adminNewPass" class="form-control mb-2" placeholder="Password (optional, default 1234)">
+            <button id="adminAddBtn" class="btn btn-success w-100">Add Student</button>
+          </div>
+        </div>
+
+        <div class="card mb-3 shadow-sm">
+          <div class="card-body">
+            <h6>Student List</h6>
+            <ul id="adminStudentList" class="list-group"></ul>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h6>Export / Reset</h6>
+            <div class="d-grid gap-2">
+              <button id="exportBtn" class="btn btn-outline-primary btn-sm">Export JSON</button>
+              <button id="clearBtn" class="btn btn-outline-danger btn-sm">Clear All Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8">
+        <div class="card mb-3 shadow-sm">
+          <div class="card-body">
+            <h6>Mark Attendance (session form)</h6>
+            <div id="attendanceForm" class="mb-3"></div>
+            <div class="d-flex gap-2 mb-2">
+              <button id="saveAttendance" class="btn btn-success">Save Attendance (counts as 1 class)</button>
+              <button id="markAllPresent" class="btn btn-outline-success">Mark All Present</button>
+              <button id="markAllAbsent" class="btn btn-outline-secondary">Mark All Absent</button>
+            </div>
+            <div class="small-muted">Click "Save Attendance" after selecting present checkboxes. That action increases total classes by 1 and updates counts.</div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h6>Attendance Summary</h6>
+            <div class="mb-2"><strong>Total class sessions marked:</strong> <span id="totalClassesDisplay">0</span></div>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead><tr><th>#</th><th>Name</th><th>Last Status</th><th>Present/Total</th><th>%</th><th>Actions</th></tr></thead>
+                <tbody id="summaryBody"></tbody>
+              </table>
+            </div>
+            <div class="small-muted">You can mark a single student as present for N sessions using "Mark Present (N)".</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
+
+  <!-- Student Dashboard -->
+  <div id="studentDashboard" class="d-none">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 id="studentTitle">Student Dashboard</h3>
+      <div>
+        <button id="btnLogoutStudent" class="btn btn-sm btn-outline-secondary">Logout</button>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6>Your Attendance</h6>
+        <div id="studentInfo" class="mb-3"></div>
+        <div class="small-muted">If your teacher uses the hosted demo, percentages will reflect that data.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guest View -->
+  <div id="guestView" class="d-none">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>Guest Preview</h3>
+      <div>
+        <button id="btnGuestBack" class="btn btn-sm btn-outline-secondary">Back</button>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6>Attendance Summary (Read-Only)</h6>
+        <div class="mb-2"><strong>Total class sessions marked:</strong> <span id="totalClassesGuest">0</span></div>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead><tr><th>#</th><th>Name</th><th>Last Status</th><th>Present/Total</th><th>%</th></tr></thead>
+            <tbody id="guestSummaryBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="text-center mt-4 small text-muted">Demo: admin / admin123 — student default pw: 1234</footer>
 </div>
 
 <script>
-const STORAGE_KEY = 'att_data_v1';
-const STORAGE_TOTAL = 'att_total_v1';
+/* Storage keys */
+const KEY_DATA = 'ams_data_v1';
+const KEY_TOTAL = 'ams_total_v1';
+/* Default creds */
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'admin123';
+const STD_DEFAULT_PASS = '1234';
 
-let attendance = {};
+/* In-memory state */
+let attendance = {}; // name -> {present_count: number, last_status: 'Present'|'Absent'|null, password: string}
 let totalClasses = 0;
+let currentUser = null;
+let currentRole = null; // 'admin' | 'student' | null
 
+/* Utilities */
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(attendance));
-  localStorage.setItem(STORAGE_TOTAL, String(totalClasses));
+  localStorage.setItem(KEY_DATA, JSON.stringify(attendance));
+  localStorage.setItem(KEY_TOTAL, String(totalClasses));
 }
-
 function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  const tot = localStorage.getItem(STORAGE_TOTAL);
+  const raw = localStorage.getItem(KEY_DATA);
+  const tot = localStorage.getItem(KEY_TOTAL);
   attendance = raw ? JSON.parse(raw) : {};
   totalClasses = tot ? parseInt(tot, 10) : 0;
 }
+function nameSafe(s){ return String(s || '').trim(); }
+function escapeHtml(text){ return String(text||'').replace(/[&<>"']/g, (m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
 
-function addStudentByName(name) {
-  name = String(name || '').trim();
-  if (!name) return;
-  if (attendance[name]) {
-    alert('Student already exists.');
+/* UI selectors */
+const loginCard = document.getElementById('loginCard');
+const adminDashboard = document.getElementById('adminDashboard');
+const studentDashboard = document.getElementById('studentDashboard');
+const guestView = document.getElementById('guestView');
+
+/* Login handlers */
+document.getElementById('btnLogin').addEventListener('click', () => {
+  const user = nameSafe(document.getElementById('loginUser').value);
+  const pw = document.getElementById('loginPass').value;
+  if(user === ADMIN_USER && pw === ADMIN_PASS){
+    currentUser = user; currentRole = 'admin';
+    showAdmin();
     return;
   }
-  attendance[name] = { present_count: 0, last_status: null };
+  // student login
+  if(attendance[user] && (attendance[user].password === pw || (attendance[user].password === undefined && pw === STD_DEFAULT_PASS))){
+    currentUser = user; currentRole = 'student';
+    showStudent(user);
+    return;
+  }
+  alert('Invalid credentials.');
+});
+document.getElementById('btnGuest').addEventListener('click', () => {
+  showGuest();
+});
+
+/* Admin actions */
+document.getElementById('adminAddBtn').addEventListener('click', () => {
+  const name = nameSafe(document.getElementById('adminNewName').value);
+  const pw = document.getElementById('adminNewPass').value || STD_DEFAULT_PASS;
+  if(!name){ alert('Enter name'); return; }
+  if(attendance[name]){ alert('Student already exists'); return; }
+  attendance[name] = { present_count: 0, last_status: null, password: pw };
+  saveState();
+  document.getElementById('adminNewName').value = '';
+  document.getElementById('adminNewPass').value = '';
+  renderAll();
+});
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if(!confirm('Clear all data?')) return;
+  attendance = {}; totalClasses = 0;
   saveState();
   renderAll();
-}
+});
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const payload = { attendance, totalClasses, exportedAt: new Date().toISOString() };
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+  const a = document.createElement('a'); a.href = dataStr; a.download = 'attendance_export.json'; a.click();
+});
 
-function removeStudent(name) {
-  if (!attendance[name]) return;
-  if (!confirm(`Remove "${name}"?`)) return;
-  delete attendance[name];
-  saveState();
-  renderAll();
-}
-
-function renderStudentList() {
-  const list = document.getElementById('studentList');
-  list.innerHTML = '';
+/* Attendance form actions */
+document.getElementById('saveAttendance').addEventListener('click', () => {
   const names = Object.keys(attendance);
-  if (names.length === 0) {
-    list.innerHTML = '<li class="list-group-item text-muted">No students added.</li>';
-    return;
-  }
-  names.forEach(name => {
-    const li = document.createElement('li');
-    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-    li.innerHTML = `<div>${escapeHtml(name)}</div>
-      <div class="btn-group btn-group-sm" role="group">
-        <button class="btn btn-outline-danger" onclick="removeStudent('${escapeForOnClick(name)}')">Remove</button>
-      </div>`;
-    list.appendChild(li);
+  if(names.length === 0){ alert('No students to mark'); return; }
+  totalClasses += 1;
+  names.forEach((name, idx) => {
+    const el = document.getElementById('att_' + idx);
+    const checked = el ? el.checked : false;
+    if(checked){
+      attendance[name].present_count = (attendance[name].present_count || 0) + 1;
+      attendance[name].last_status = 'Present';
+    } else {
+      attendance[name].last_status = 'Absent';
+    }
   });
+  saveState();
+  renderAll();
+});
+document.getElementById('markAllPresent').addEventListener('click', () => {
+  Object.keys(attendance).forEach((_, idx) => {
+    const el = document.getElementById('att_' + idx); if(el) el.checked = true;
+  });
+});
+document.getElementById('markAllAbsent').addEventListener('click', () => {
+  Object.keys(attendance).forEach((_, idx) => {
+    const el = document.getElementById('att_' + idx); if(el) el.checked = false;
+  });
+});
+
+/* Logout buttons */
+document.getElementById('btnLogoutAdmin').addEventListener('click', () => { logout(); });
+document.getElementById('btnLogoutStudent').addEventListener('click', () => { logout(); });
+document.getElementById('btnGuestBack').addEventListener('click', () => { hideAll(); loginCard.classList.remove('d-none'); });
+
+/* Helper action from summary: markPresentWithSessions & remove student */
+function markPresentWithSessions(name){
+  const input = prompt(`How many class sessions should be recorded as attended by "${name}"? Enter positive integer:`, '1');
+  if(input === null) return; const n = parseInt(input.trim(), 10);
+  if(isNaN(n) || n <= 0){ alert('Enter positive integer'); return; }
+  totalClasses += n;
+  attendance[name].present_count = (attendance[name].present_count || 0) + n;
+  attendance[name].last_status = 'Present';
+  // set others last_status absent for these sessions
+  Object.keys(attendance).forEach(o => { if(o !== name) attendance[o].last_status = 'Absent'; });
+  saveState(); renderAll();
+}
+function removeStudentAdmin(name){
+  if(!confirm(`Remove ${name}?`)) return;
+  delete attendance[name]; saveState(); renderAll();
 }
 
-function escapeForOnClick(s) {
-  return s.replace(/'/g, "\\'");
-}
-function escapeHtml(text) {
-  return text.replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]); });
-}
-
-function renderAttendanceForm() {
+/* Rendering functions */
+function renderAttendanceForm(){
   const container = document.getElementById('attendanceForm');
   container.innerHTML = '';
   const names = Object.keys(attendance);
-  if (names.length === 0) {
-    container.innerHTML = '<div class="text-muted">No students to mark. Add students first.</div>';
-    return;
-  }
+  if(names.length === 0){ container.innerHTML = '<div class="text-muted">No students to mark. Add students first.</div>'; return; }
   names.forEach((name, idx) => {
     const checked = attendance[name].last_status === 'Present' ? 'checked' : '';
     const html = `
@@ -152,138 +299,104 @@ function renderAttendanceForm() {
     container.insertAdjacentHTML('beforeend', html);
   });
 }
-
-function renderSummary() {
-  document.getElementById('totalClasses').textContent = totalClasses;
+function renderAdminStudentList(){
+  const ul = document.getElementById('adminStudentList');
+  ul.innerHTML = '';
+  const names = Object.keys(attendance);
+  if(names.length === 0){ ul.innerHTML = '<li class="list-group-item text-muted">No students</li>'; return; }
+  names.forEach(name => {
+    const li = document.createElement('li');
+    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+    li.innerHTML = `<div>${escapeHtml(name)}</div>
+      <div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-danger" onclick="removeStudentAdmin('${name.replace(/'/g,\"\\\\'\")}')">Remove</button>
+      </div>`;
+    ul.appendChild(li);
+  });
+}
+function renderSummary(){
+  document.getElementById('totalClassesDisplay').textContent = totalClasses;
   const tbody = document.getElementById('summaryBody');
   tbody.innerHTML = '';
   const names = Object.keys(attendance);
-  if (names.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No students added yet.</td></tr>';
-    return;
-  }
+  if(names.length === 0){ tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No students added yet.</td></tr>'; return; }
   names.forEach((name, idx) => {
-    const data = attendance[name];
-    const presentCount = data.present_count || 0;
-    const last = data.last_status || 'N/A';
+    const d = attendance[name];
+    const presentCount = d.present_count || 0;
+    const last = d.last_status || 'N/A';
     const pct = totalClasses > 0 ? ((presentCount / totalClasses) * 100).toFixed(1) : '0.0';
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${idx + 1}</td>
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx+1}</td>
       <td>${escapeHtml(name)}</td>
       <td>${last}</td>
       <td>${presentCount} / ${totalClasses}</td>
       <td>${pct}%</td>
-      <td><button class="btn btn-sm btn-outline-secondary" onclick="markPresentWithSessions('${escapeForOnClick(name)}')">Mark Present Now</button></td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <button class="btn btn-outline-secondary" onclick="markPresentWithSessions('${name.replace(/'/g,\"\\\\'\")}')">Mark Present (N)</button>
+          <button class="btn btn-outline-danger" onclick="removeStudentAdmin('${name.replace(/'/g,\"\\\\'\")}')">Remove</button>
+        </div>
+      </td>
     `;
-    tbody.appendChild(row);
+    tbody.appendChild(tr);
   });
 }
-
-function markPresentWithSessions(name) {
-  if (!attendance[name]) return;
-  let input = prompt(`How many class sessions should be recorded as attended by "${name}"? Enter a positive integer (default 1):`, '1');
-  if (input === null) return;
-  input = input.trim();
-  if (input === '') input = '1';
-  const n = parseInt(input, 10);
-  if (isNaN(n) || n <= 0) { alert('Please enter a positive integer.'); return; }
-
-  // Increment totalClasses by n
-  totalClasses += n;
-
-  // For this student: increment present_count by n and set last_status Present
-  attendance[name].present_count = (attendance[name].present_count || 0) + n;
-  attendance[name].last_status = 'Present';
-
-  // For all other students: set last_status Absent (they were not present for these newly added sessions)
-  Object.keys(attendance).forEach(other => {
-    if (other !== name) {
-      attendance[other].last_status = 'Absent';
-    }
-  });
-
-  saveState();
-  renderAll();
+function renderStudentView(name){
+  const info = document.getElementById('studentInfo');
+  if(!attendance[name]){ info.innerHTML = '<div class="text-muted">No record found.</div>'; return; }
+  const d = attendance[name];
+  const presentCount = d.present_count || 0;
+  const last = d.last_status || 'N/A';
+  const pct = totalClasses > 0 ? ((presentCount / totalClasses) * 100).toFixed(1) : '0.0';
+  info.innerHTML = `
+    <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+    <p><strong>Last status:</strong> ${last}</p>
+    <p><strong>Present count:</strong> ${presentCount} / ${totalClasses}</p>
+    <p><strong>Attendance %:</strong> ${pct}%</p>
+  `;
 }
-
-function saveAttendanceFromForm() {
+function renderGuestSummary(){
+  document.getElementById('totalClassesGuest').textContent = totalClasses;
+  const tbody = document.getElementById('guestSummaryBody');
+  tbody.innerHTML = '';
   const names = Object.keys(attendance);
-  if (names.length === 0) {
-    alert('No students to mark.');
-    return;
-  }
-  totalClasses += 1;
+  if(names.length === 0){ tbody.innerHTML = '<tr><td colspan="5" class="text-muted">No students added yet.</td></tr>'; return; }
   names.forEach((name, idx) => {
-    const checkbox = document.getElementById('att_' + idx);
-    const checked = checkbox ? checkbox.checked : false;
-    if (checked) {
-      attendance[name].present_count = (attendance[name].present_count || 0) + 1;
-      attendance[name].last_status = 'Present';
-    } else {
-      attendance[name].last_status = 'Absent';
-    }
-  });
-  saveState();
-  renderAll();
-}
-
-function markAllPresentUI() {
-  const names = Object.keys(attendance);
-  names.forEach((_, idx) => {
-    const el = document.getElementById('att_' + idx);
-    if (el) el.checked = true;
+    const d = attendance[name];
+    const presentCount = d.present_count || 0;
+    const last = d.last_status || 'N/A';
+    const pct = totalClasses > 0 ? ((presentCount / totalClasses) * 100).toFixed(1) : '0.0';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${idx+1}</td><td>${escapeHtml(name)}</td><td>${last}</td><td>${presentCount} / ${totalClasses}</td><td>${pct}%</td>`;
+    tbody.appendChild(tr);
   });
 }
 
-function markAllAbsentUI() {
-  const names = Object.keys(attendance);
-  names.forEach((_, idx) => {
-    const el = document.getElementById('att_' + idx);
-    if (el) el.checked = false;
-  });
-}
+/* Show / hide pages */
+function hideAll(){ loginCard.classList.add('d-none'); adminDashboard.classList.add('d-none'); studentDashboard.classList.add('d-none'); guestView.classList.add('d-none'); }
+function showAdmin(){ hideAll(); adminDashboard.classList.remove('d-none'); renderAll(); }
+function showStudent(name){ hideAll(); studentDashboard.classList.remove('d-none'); document.getElementById('studentTitle').textContent = `Student Dashboard — ${name}`; renderStudentView(name); }
+function showGuest(){ hideAll(); guestView.classList.remove('d-none'); renderGuestSummary(); }
+function logout(){ currentUser = null; currentRole = null; hideAll(); loginCard.classList.remove('d-none'); }
 
-function clearAllData() {
-  if (!confirm('Clear all students and attendance data? This cannot be undone.')) return;
-  attendance = {};
-  totalClasses = 0;
-  saveState();
-  renderAll();
-}
+/* Master render */
+function renderAll(){ renderAttendanceForm(); renderAdminStudentList(); renderSummary(); renderGuestSummary(); }
 
-function exportJson() {
-  const payload = { attendance, totalClasses, exportedAt: new Date().toISOString() };
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
-  const dlAnchor = document.getElementById('downloadLink');
-  dlAnchor.setAttribute('href', dataStr);
-  dlAnchor.setAttribute('download', 'attendance_export.json');
-  dlAnchor.click();
-}
-
-function renderAll() {
-  renderStudentList();
-  renderAttendanceForm();
-  renderSummary();
-}
-
-document.getElementById('addBtn').addEventListener('click', () => {
-  const input = document.getElementById('studentName');
-  const name = input.value.trim();
-  if (!name) { alert('Enter a name'); return; }
-  addStudentByName(name);
-  input.value = '';
-  input.focus();
-});
-
-document.getElementById('saveAttendance').addEventListener('click', saveAttendanceFromForm);
-document.getElementById('markAllPresent').addEventListener('click', () => { markAllPresentUI(); });
-document.getElementById('markAllAbsent').addEventListener('click', () => { markAllAbsentUI(); });
-document.getElementById('clearAll').addEventListener('click', clearAllData);
-document.getElementById('exportJson').addEventListener('click', exportJson);
-
+/* Initialize */
 loadState();
 renderAll();
+
+/* Student logout button accessible after login */
+document.getElementById('btnLogoutStudent').addEventListener('click', logout);
+
+/* Allow Enter key to login */
+document.getElementById('loginPass').addEventListener('keydown', (e) => { if(e.key === 'Enter') document.getElementById('btnLogin').click(); });
+document.getElementById('loginUser').addEventListener('keydown', (e) => { if(e.key === 'Enter') document.getElementById('btnLogin').click(); });
+
+/* Expose a couple helper functions to global for inline onclick use */
+window.markPresentWithSessions = markPresentWithSessions;
+window.removeStudentAdmin = removeStudentAdmin;
 </script>
 </body>
 </html>
