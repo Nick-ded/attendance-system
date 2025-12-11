@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Attendance with Percentage</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { background:#f7f7fb; }
+  .card { border-radius:10px; }
+  .small-muted { font-size:0.9rem; color:#6c757d; }
+</style>
+</head>
+<body>
+<div class="container py-4">
+  <h1 class="mb-4">Attendance Management (Percentages)</h1>
+
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <div class="row g-2">
+        <div class="col-md-8">
+          <input id="studentName" class="form-control" placeholder="Enter student name">
+        </div>
+        <div class="col-md-4 d-grid">
+          <button id="addBtn" class="btn btn-primary">Add Student</button>
+        </div>
+      </div>
+      <div class="small-muted mt-2">Students are stored in your browser. Data persists across refresh.</div>
+    </div>
+  </div>
+
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <h5 class="mb-3">Student List</h5>
+      <ul id="studentList" class="list-group"></ul>
+    </div>
+  </div>
+
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <h5 class="mb-3">Mark Attendance (this action counts as one class/session)</h5>
+      <div id="attendanceForm" class="mb-3"></div>
+      <div class="d-flex gap-2">
+        <button id="saveAttendance" class="btn btn-success">Save Attendance (Increment class count)</button>
+        <button id="markAllPresent" class="btn btn-outline-success">Mark All Present (UI)</button>
+        <button id="markAllAbsent" class="btn btn-outline-secondary">Mark All Absent (UI)</button>
+      </div>
+      <div class="small-muted mt-2">When you click Save Attendance, total class sessions increases by 1 and present counts update.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h5 class="mb-3">Attendance Summary</h5>
+      <div class="mb-2"><strong>Total class sessions marked:</strong> <span id="totalClasses">0</span></div>
+      <table class="table table-sm">
+        <thead>
+          <tr><th>#</th><th>Name</th><th>Last status</th><th>Present / Total</th><th>Percentage</th><th></th></tr>
+        </thead>
+        <tbody id="summaryBody"></tbody>
+      </table>
+      <div class="d-flex gap-2">
+        <button id="clearAll" class="btn btn-danger btn-sm">Clear All Data</button>
+        <button id="exportJson" class="btn btn-outline-primary btn-sm">Export JSON</button>
+        <a id="downloadLink" style="display:none"></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'att_data_v1';
+const STORAGE_TOTAL = 'att_total_v1';
+
+let attendance = {};
+let totalClasses = 0;
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(attendance));
+  localStorage.setItem(STORAGE_TOTAL, String(totalClasses));
+}
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  const tot = localStorage.getItem(STORAGE_TOTAL);
+  attendance = raw ? JSON.parse(raw) : {};
+  totalClasses = tot ? parseInt(tot, 10) : 0;
+}
+
+function addStudentByName(name) {
+  name = String(name || '').trim();
+  if (!name) return;
+  if (attendance[name]) {
+    alert('Student already exists.');
+    return;
+  }
+  attendance[name] = { present_count: 0, last_status: null };
+  saveState();
+  renderAll();
+}
+
+function removeStudent(name) {
+  if (!attendance[name]) return;
+  if (!confirm(`Remove "${name}"?`)) return;
+  delete attendance[name];
+  saveState();
+  renderAll();
+}
+
+function renderStudentList() {
+  const list = document.getElementById('studentList');
+  list.innerHTML = '';
+  const names = Object.keys(attendance);
+  if (names.length === 0) {
+    list.innerHTML = '<li class="list-group-item text-muted">No students added.</li>';
+    return;
+  }
+  names.forEach(name => {
+    const li = document.createElement('li');
+    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+    li.innerHTML = `<div>${escapeHtml(name)}</div>
+      <div class="btn-group btn-group-sm" role="group">
+        <button class="btn btn-outline-danger" onclick="removeStudent('${escapeForOnClick(name)}')">Remove</button>
+      </div>`;
+    list.appendChild(li);
+  });
+}
+
+function escapeForOnClick(s) {
+  return s.replace(/'/g, "\\'");
+}
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]); });
+}
+
+function renderAttendanceForm() {
+  const container = document.getElementById('attendanceForm');
+  container.innerHTML = '';
+  const names = Object.keys(attendance);
+  if (names.length === 0) {
+    container.innerHTML = '<div class="text-muted">No students to mark. Add students first.</div>';
+    return;
+  }
+  names.forEach((name, idx) => {
+    const checked = attendance[name].last_status === 'Present' ? 'checked' : '';
+    const html = `
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="att_${idx}" ${checked}>
+        <label class="form-check-label" for="att_${idx}">${escapeHtml(name)}</label>
+      </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+  });
+}
+
+function renderSummary() {
+  document.getElementById('totalClasses').textContent = totalClasses;
+  const tbody = document.getElementById('summaryBody');
+  tbody.innerHTML = '';
+  const names = Object.keys(attendance);
+  if (names.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No students added yet.</td></tr>';
+    return;
+  }
+  names.forEach((name, idx) => {
+    const data = attendance[name];
+    const presentCount = data.present_count || 0;
+    const last = data.last_status || 'N/A';
+    const pct = totalClasses > 0 ? ((presentCount / totalClasses) * 100).toFixed(1) : '0.0';
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${idx + 1}</td>
+      <td>${escapeHtml(name)}</td>
+      <td>${last}</td>
+      <td>${presentCount} / ${totalClasses}</td>
+      <td>${pct}%</td>
+      <td><button class="btn btn-sm btn-outline-secondary" onclick="markPresentWithSessions('${escapeForOnClick(name)}')">Mark Present Now</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function markPresentWithSessions(name) {
+  if (!attendance[name]) return;
+  let input = prompt(`How many class sessions should be recorded as attended by "${name}"? Enter a positive integer (default 1):`, '1');
+  if (input === null) return;
+  input = input.trim();
+  if (input === '') input = '1';
+  const n = parseInt(input, 10);
+  if (isNaN(n) || n <= 0) { alert('Please enter a positive integer.'); return; }
+
+  // Increment totalClasses by n
+  totalClasses += n;
+
+  // For this student: increment present_count by n and set last_status Present
+  attendance[name].present_count = (attendance[name].present_count || 0) + n;
+  attendance[name].last_status = 'Present';
+
+  // For all other students: set last_status Absent (they were not present for these newly added sessions)
+  Object.keys(attendance).forEach(other => {
+    if (other !== name) {
+      attendance[other].last_status = 'Absent';
+    }
+  });
+
+  saveState();
+  renderAll();
+}
+
+function saveAttendanceFromForm() {
+  const names = Object.keys(attendance);
+  if (names.length === 0) {
+    alert('No students to mark.');
+    return;
+  }
+  totalClasses += 1;
+  names.forEach((name, idx) => {
+    const checkbox = document.getElementById('att_' + idx);
+    const checked = checkbox ? checkbox.checked : false;
+    if (checked) {
+      attendance[name].present_count = (attendance[name].present_count || 0) + 1;
+      attendance[name].last_status = 'Present';
+    } else {
+      attendance[name].last_status = 'Absent';
+    }
+  });
+  saveState();
+  renderAll();
+}
+
+function markAllPresentUI() {
+  const names = Object.keys(attendance);
+  names.forEach((_, idx) => {
+    const el = document.getElementById('att_' + idx);
+    if (el) el.checked = true;
+  });
+}
+
+function markAllAbsentUI() {
+  const names = Object.keys(attendance);
+  names.forEach((_, idx) => {
+    const el = document.getElementById('att_' + idx);
+    if (el) el.checked = false;
+  });
+}
+
+function clearAllData() {
+  if (!confirm('Clear all students and attendance data? This cannot be undone.')) return;
+  attendance = {};
+  totalClasses = 0;
+  saveState();
+  renderAll();
+}
+
+function exportJson() {
+  const payload = { attendance, totalClasses, exportedAt: new Date().toISOString() };
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+  const dlAnchor = document.getElementById('downloadLink');
+  dlAnchor.setAttribute('href', dataStr);
+  dlAnchor.setAttribute('download', 'attendance_export.json');
+  dlAnchor.click();
+}
+
+function renderAll() {
+  renderStudentList();
+  renderAttendanceForm();
+  renderSummary();
+}
+
+document.getElementById('addBtn').addEventListener('click', () => {
+  const input = document.getElementById('studentName');
+  const name = input.value.trim();
+  if (!name) { alert('Enter a name'); return; }
+  addStudentByName(name);
+  input.value = '';
+  input.focus();
+});
+
+document.getElementById('saveAttendance').addEventListener('click', saveAttendanceFromForm);
+document.getElementById('markAllPresent').addEventListener('click', () => { markAllPresentUI(); });
+document.getElementById('markAllAbsent').addEventListener('click', () => { markAllAbsentUI(); });
+document.getElementById('clearAll').addEventListener('click', clearAllData);
+document.getElementById('exportJson').addEventListener('click', exportJson);
+
+loadState();
+renderAll();
+</script>
+</body>
+</html>
